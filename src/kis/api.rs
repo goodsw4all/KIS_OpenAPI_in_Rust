@@ -8,11 +8,14 @@ type KisResult<T> = Result<T, Box<dyn std::error::Error>>;
 
 #[derive(Debug)]
 struct KisRequest {
+    req_type: RequestType,
     url: String,
     headers: HeaderMap,
     parameters: HashMap<String, String>,
+    parameters2: Vec<(String, String)>,
 }
 
+#[derive(Debug)]
 enum RequestType {
     GET,
     POST,
@@ -40,13 +43,17 @@ impl KisRequest {
                 );
 
                 let parameters: HashMap<String, String> = HashMap::new();
+                let parameters2: Vec<(String, String)> = Vec::new();
 
                 Self {
+                    req_type,
                     headers,
                     parameters,
+                    parameters2,
                     url,
                 }
             }
+
             RequestType::POST => {
                 let mut headers = HeaderMap::new();
                 headers.insert(
@@ -63,13 +70,17 @@ impl KisRequest {
                 );
 
                 let parameters: HashMap<String, String> = HashMap::from([]);
+                let parameters2: Vec<(String, String)> = Vec::new();
 
                 Self {
+                    req_type,
                     headers,
                     parameters,
+                    parameters2,
                     url,
                 }
             }
+
             RequestType::POSTTOKEN => {
                 let mut headers = HeaderMap::new();
                 headers.insert(
@@ -83,9 +94,13 @@ impl KisRequest {
                     ("grant_type".to_string(), "client_credentials".to_string()),
                 ]);
 
+                let parameters2: Vec<(String, String)> = Vec::new();
+
                 Self {
+                    req_type,
                     headers,
                     parameters,
+                    parameters2,
                     url,
                 }
             }
@@ -108,8 +123,24 @@ impl KisApi {
 
         let req = self.make_request(url, RequestType::POST, &headers, parameters)?;
 
-        // println!("{:?}", req.headers);
-        self.send_post_request(req)
+        println!("{:?}", req.parameters);
+        self.send_request(req)
+    }
+
+    pub fn get_hashkey2(&self, parameters: &[(&str, &str)]) -> KisResult<(HashMap<String, String>, String)> {
+        let url = "/uapi/hashkey";
+        let headers = [];
+
+        let req = self.make_request(url, RequestType::POST, &headers, parameters)?;
+
+        // println!("{:?}", req.parameters);
+        let ret = req.parameters.clone();
+        let v = self.send_request(req);
+        if let Ok(val) = v {
+            return Ok((ret, val["HASH"].to_string().trim_matches('"').to_string()));
+        }
+
+        Err("".into())
     }
 
     pub fn issue_access_token(&mut self) -> KisResult<bool> {
@@ -161,43 +192,55 @@ impl KisApi {
                 .insert(k.parse::<HeaderName>().unwrap(), v.parse().unwrap());
         }
 
-        // query
+        // parameters : query or body
         for (k, v) in parameters {
             req.parameters.insert(k.to_string(), v.to_string());
         }
 
-        // println!("{:?}", req.headers);
+        // parameters : query or body
+        for (k, v) in parameters {
+            req.parameters2.push((k.to_string(), v.to_string()));
+        }
+
+        println!("\nDebuging {url}{}", req.url);
+        println!("Header\n{:?}", req.headers);
+        println!();
+        println!("Parameters\n{:?}", req.parameters);
+        println!("Debuging");
 
         Ok(req)
     }
 
-    fn send_get_request(&self, req: KisRequest) -> KisResult<serde_json::Value> {
+    fn send_request(&self, req: KisRequest) -> KisResult<serde_json::Value> {
         let client = reqwest::blocking::Client::new();
+        let res: blocking::Response;
 
-        let res: blocking::Response = client
-            .get(req.url)
-            .headers(req.headers)
-            .query(&req.parameters)
-            .send()?;
+        res = if let RequestType::GET = req.req_type {
+            client
+                .get(req.url)
+                .headers(req.headers)
+                .query(&req.parameters)
+                .send()?
+        } else {
+            client
+                .post(req.url)
+                .headers(req.headers)
+                .json(&req.parameters)
+                .send()?
+        };
 
-        //TODO:
-        let v: serde_json::Value = serde_json::from_str(&res.text()?)?;
-        Ok(v)
-    }
-
-    fn send_post_request(&self, req: KisRequest) -> KisResult<serde_json::Value> {
-        let client = reqwest::blocking::Client::new();
-
-        let res: blocking::Response = client
-            .post(req.url)
-            .headers(req.headers)
-            .json(&req.parameters)
-            .send()?;
-
-        //TODO:
-        println!("{}", res.status());
-        let v: serde_json::Value = serde_json::from_str(&res.text()?)?;
-        Ok(v)
+        //TODO: Error handling
+        match res.status() {
+            reqwest::StatusCode::OK => {
+                let v: serde_json::Value = serde_json::from_str(&res.text()?)?;
+                println!("{v:?}");
+                Ok(v)
+            }
+            s => {
+                println!("Response Error : {} \n\t{:?}", s, res);
+                Err("Response Error".into())
+            }
+        }
     }
 
     pub fn get_stock_price_days(&self, ticker: &str) -> KisResult<serde_json::Value> {
@@ -212,7 +255,7 @@ impl KisApi {
 
         let req = self.make_request(url, RequestType::GET, &headers, &query)?;
 
-        self.send_get_request(req)
+        self.send_request(req)
     }
 
     pub fn get_stock_price_realtime(&self, ticker: &str) -> KisResult<serde_json::Value> {
@@ -222,7 +265,75 @@ impl KisApi {
 
         let req = self.make_request(url, RequestType::GET, &headers, &query)?;
 
-        self.send_get_request(req)
+        self.send_request(req)
+    }
+
+    pub fn get_account_balance(&self) -> KisResult<serde_json::Value> {
+        let url = "/uapi/domestic-stock/v1/trading/inquire-balance";
+        let headers = [("tr_id", "VTTC8434R")];
+        // let headers = [("tr_id", "TTTC8434R")];
+
+        let query = [
+            ("CANO", self.account_info.get_account_no()),
+            ("ACNT_PRDT_CD", "01"),
+            ("AFHR_FLPR_YN", "N"),
+            ("FNCG_AMT_AUTO_RDPT_YN", "N"),
+            ("FUND_STTL_ICLD_YN", "N"),
+            ("INQR_DVSN", "01"),
+            ("OFL_YN", "N"),
+            ("PRCS_DVSN", "01"),
+            ("UNPR_DVSN", "01"),
+            ("CTX_AREA_FK100", ""),
+            ("CTX_AREA_NK100", ""),
+        ];
+
+        let req = self.make_request(url, RequestType::GET, &headers, &query)?;
+
+        self.send_request(req)
+    }
+
+    pub fn order_buy_stock(&self) -> KisResult<serde_json::Value> {
+        let client = reqwest::blocking::Client::new();
+        let url = "/uapi/domestic-stock/v1/trading/order-cash";
+
+        let parameters = [
+            ("CANO", "50067252"),
+            ("ACNT_PRDT_CD", "01"),
+            ("PDNO", "005930"),
+            ("ORD_DVSN", "01"),
+            ("ORD_QTY", "1"),
+            ("ORD_UNPR", "950"),
+            ("CTAC_TLNO", ""),
+            ("SLL_TYPE", "01"),
+            ("ALGO_NO", ""),
+        ];
+
+        // let v = self.get_hashkey(&parameters);
+        // let hashkey = if let Ok(value) = v {
+        //     value["HASH"].to_string()
+        // } else {
+        //     "".to_string()
+        // };
+        let hashkey = self.get_hashkey2(&parameters)?;
+
+        let headers = [
+            ("custtype", "P"),
+            ("tr_id", "VTTC0802U"),
+            ("hashkey", hashkey.1.trim_matches('"')),
+        ];
+
+        let req = self.make_request(url, RequestType::POST, &headers, &parameters)?;
+
+        let res: blocking::Response = {
+            client
+                .post("https://openapivts.koreainvestment.com:29443/uapi/domestic-stock/v1/trading/order-cash")
+                .headers(req.headers)
+                .json(&hashkey.0)
+                .send()?
+        };
+        println!("\n{:?}\n\n", res.text());
+
+        Err("DEBUGGIN".into())
     }
 }
 
@@ -262,6 +373,46 @@ mod tests {
     }
 
     #[test]
+    fn test_get_hashkey() {
+        let kis = KisApi::new(load_account_config("./secret").unwrap());
+        let parameters = [
+            ("CANO", "00000000"),
+            ("ACNT_PRDT_CD", "01"),
+            ("PDNO", "005930"),
+            ("ORD_DVSN", "01"),
+            ("ORD_QTY", "10"),
+            ("ORD_UNPR", "0"),
+        ];
+
+        let v = kis.get_hashkey(&parameters);
+
+        assert!(v.is_ok());
+        if let Ok(v) = v {
+            println!("HashKey : {}", v["HASH"].to_string().trim_matches('"'));
+        }
+    }
+
+    #[test]
+    fn test_get_hashkey2() {
+        let kis = KisApi::new(load_account_config("./secret").unwrap());
+        let parameters = [
+            ("CANO", "00000000"),
+            ("ACNT_PRDT_CD", "01"),
+            ("PDNO", "005930"),
+            ("ORD_DVSN", "01"),
+            ("ORD_QTY", "10"),
+            ("ORD_UNPR", "0"),
+        ];
+
+        let v = kis.get_hashkey2(&parameters);
+
+        assert!(v.is_ok());
+        // if let Ok(v) = v {
+        //     println!("HashKey : {}", v["HASH"].to_string().trim_matches('"'));
+        // }
+    }
+
+    #[test]
     fn test_issue_request_token() {
         let mut kis = KisApi::new(load_account_config("./secret").unwrap());
         let res = kis.issue_access_token();
@@ -272,7 +423,7 @@ mod tests {
     fn test_get_price_realtime() {
         let mut kis = KisApi::new(load_account_config("./secret").unwrap());
         let res = kis.issue_access_token();
-        let v = kis.get_stock_price_realtime("069960");
+        let v = kis.get_stock_price_realtime("064350");
         assert!(res.is_ok());
         assert!(v.is_ok());
         if let Ok(v) = v {
@@ -293,23 +444,30 @@ mod tests {
     }
 
     #[test]
-    fn test_get_hashkey() {
-        let kis = KisApi::new(load_account_config("./secret").unwrap());
-        let parameters = [
-            ("CANO", "00000000"),
-            ("ACNT_PRDT_CD", "01"),
-            ("OVRS_EXCG_CD", "SHAA"),
-            ("PDNO", "00001"),
-            ("ORD_QTY", "500"),
-            ("OVRS_ORD_UNPR", "52.65"),
-            ("ORD_SVR_DVSN_CD", "0"),
-        ];
-
-        let v = kis.get_hashkey(&parameters);
-
+    fn test_get_balance() {
+        let mut kis = KisApi::new(load_account_config("./secret").unwrap());
+        let res = kis.issue_access_token();
+        let v = kis.get_account_balance();
+        println!("{:?}", res);
+        assert!(res.is_ok());
         assert!(v.is_ok());
         if let Ok(v) = v {
-            println!("Response Text : {}", v);
+            println!("Response Text  : {}", v);
+        }
+    }
+
+    #[test]
+    fn test_get_buy() {
+        let mut kis = KisApi::new(load_account_config("./secret").unwrap());
+
+        let res = kis.issue_access_token();
+        let v = kis.order_buy_stock();
+
+        println!("Reuslt {:?}", res);
+        assert!(res.is_ok());
+        assert!(v.is_ok());
+        if let Ok(v) = v {
+            println!("Response Text  : {}", v);
         }
     }
 

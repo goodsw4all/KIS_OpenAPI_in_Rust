@@ -57,6 +57,10 @@ impl AccountConfig {
         //TODO: check if expired
         self.token != ""
     }
+
+    pub(crate) fn get_account_no(&self) -> &str {
+        &self.account
+    }
 }
 
 pub fn load_account_config(path: &str) -> MyResult<AccountConfig> {
