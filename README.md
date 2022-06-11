@@ -15,7 +15,7 @@ KIS 트레이딩 오픈API Client in Rust
 - Step 3 : Strategy 
 
 ## Development 
-### SDK
+### SDK (Working on only in virtual account for now)
 - [x] 보안인증키 발급 (access token)
 - [x] Hashkey
 - [x] 현재가 시세
