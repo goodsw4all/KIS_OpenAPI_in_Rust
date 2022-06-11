@@ -1,7 +1,7 @@
 # KIS OpenAPI in Rust
 
 KIS 트레이딩 오픈API Client in Rust (https://apiportal.koreainvestment.com/about)    
-한국투자증권에서 Rest API 를 증권사 최초 공개, 보다 쉽게 stock trading tool을 만들 수 있게 됨  
+한국투자증권에서 Rest API 를 증권사 최초 공개, 보다 자유롭게 stock trading tool을 만들 수 있게 됨  
 (기존의 API들은 windows 전용(OCX/COM)이었고, 사용이 불편)  
 
 ## KIS Developers Open API with Rust
