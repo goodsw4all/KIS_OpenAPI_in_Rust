@@ -3,7 +3,7 @@
 
 use clap::{Arg, Command};
 
-use crate::kis;
+use trade_lib::kis;
 
 type MyResult<T> = Result<T, Box<dyn std::error::Error>>;
 
@@ -22,19 +22,24 @@ pub fn get_args() -> MyResult<kis::AccountConfig> {
         )
         .arg(
             Arg::new("kis_server")
-                .value_name("실전투자 / 모의투자")
+                .value_name("Enable 실전 투자")
                 .short('t')
                 .long("type")
                 .help("account configuration folder for KIS connection")
                 .required(true)
-                .takes_value(true),
+                .takes_value(false),
         )
         .get_matches();
 
     let conf_path = matches.value_of("account_config_path").unwrap();
 
-    kis::account::load_account_config(conf_path)
+    kis::account::load_account_config(conf_path, false)
     // Err("err".into())
+}
+
+pub fn run(config: kis::AccountConfig) -> MyResult<()> {
+    println!("{config:#?}");
+    Ok(())
 }
 
 #[cfg(test)]
@@ -43,13 +48,13 @@ mod tests {
 
     #[test]
     fn test_load_account_config_ok() {
-        assert!(kis::load_account_config("./secret").is_ok());
+        assert!(kis::load_account_config("./secret", false).is_ok());
     }
 
     #[test]
     #[should_panic(expected = "No such file or directory (os error 2)")]
     fn test_load_account_config_invalid_path() {
-        match kis::load_account_config("./invalid_path") {
+        match kis::load_account_config("./invalid_path", false) {
             Ok(_) => (),
             Err(e) => panic!("{}", e.to_string()),
         }

@@ -142,27 +142,6 @@ impl KisApi {
             }
             Err(_) => Ok(false),
         }
-
-        // let kis_request = KisRequest::new(RequestType::POSTTOKEN, &self.account_info);
-
-        // let client = reqwest::blocking::Client::new();
-        // let res: blocking::Response = client
-        //     .post(kis_request.url + "/oauth2/tokenP")
-        //     .headers(kis_request.headers)
-        //     .json(&kis_request.parameters)
-        //     .send()?;
-
-        // if res.status() == reqwest::StatusCode::OK {
-        //     let v: serde_json::Value = serde_json::from_str(&res.text()?)?;
-        //     self.account_info
-        //         .set_access_token(v["access_token"].as_str().unwrap());
-        //     // println!("{:?}", self.account_info);
-        //     return Ok(true);
-        // } else {
-        //     println!("Request error {}", res.status());
-        // }
-
-        // Ok(false)
     }
 
     fn make_request(
@@ -194,12 +173,6 @@ impl KisApi {
             req.parameters.insert(k.to_string(), v.to_string());
         }
 
-        // println!("\nDebugigng {url}{}", req.url);
-        // println!("Header\n{:?}", req.headers);
-        // println!();
-        // println!("Parameters\n{:?}", req.parameters);
-        // println!("Debuging");
-
         Ok(req)
     }
 
@@ -209,7 +182,6 @@ impl KisApi {
         req_type: RequestType,
         headers: &[(&str, &str)],
         body: HashMap<String, String>,
-        // hashmap : Option<HashMap<String, String>>
     ) -> KisResult<KisRequest> {
         let mut req = KisRequest::new(req_type, &self.account_info);
         let auth_header = format!("Bearer {}", self.account_info.get_access_token());
@@ -264,8 +236,7 @@ impl KisApi {
         }
     }
 
-    // Warapper Functions
-
+    // 국내주식시세
     pub fn get_stock_price_days(&self, ticker: &str) -> KisResult<serde_json::Value> {
         let url = "/uapi/domestic-stock/v1/quotations/inquire-price";
         let headers = [("tr_id", "FHKST01010400")];
@@ -273,7 +244,7 @@ impl KisApi {
             ("fid_cond_mrkt_div_code", "J"),
             ("fid_input_iscd", ticker),
             ("fid_org_adj_prc", "1"),
-            ("fid_period_div_code", "D"),
+            ("fid_period_div_code", "D"), // D,W,M
         ];
 
         let req = self.make_request(url, RequestType::GET, &headers, &query)?;
@@ -290,11 +261,17 @@ impl KisApi {
 
         self.send_request(req)
     }
+    // 국내주식시세
 
     pub fn get_account_balance(&self) -> KisResult<serde_json::Value> {
         let url = "/uapi/domestic-stock/v1/trading/inquire-balance";
-        let headers = [("tr_id", "VTTC8434R")];
-        // let headers = [("tr_id", "TTTC8434R")];
+
+        let tr_id = if self.account_info.is_real() {
+            "TTTC8434R"
+        } else {
+            "VTTC8434R"
+        };
+        let headers = [("tr_id", tr_id)];
 
         let query = [
             ("CANO", self.account_info.get_account_no()),
@@ -315,71 +292,62 @@ impl KisApi {
         self.send_request(req)
     }
 
-    pub fn order_buy_stock(&self) -> KisResult<serde_json::Value> {
+    pub fn order_buy_stock(&self, order_type: &str, count: u32, price: u32) -> KisResult<serde_json::Value> {
+        self.order_stock(order_type, count, price, true)
+    }
+
+    pub fn order_sell_stock(&self, order_type: &str, count: u32, price: u32) -> KisResult<serde_json::Value> {
+        self.order_stock(order_type, count, price, false)
+    }
+
+    pub fn order_stock(&self, order_type: &str, count: u32, price: u32, buy: bool) -> KisResult<serde_json::Value> {
         let url = "/uapi/domestic-stock/v1/trading/order-cash";
 
         let parameters = [
             ("CANO", "50067252"),
             ("ACNT_PRDT_CD", "01"),
             ("PDNO", "005930"),
-            ("ORD_DVSN", "01"),
-            ("ORD_QTY", "1"),
-            ("ORD_UNPR", "950"),
-            ("CTAC_TLNO", ""),
-            ("SLL_TYPE", "01"),
+            ("ORD_DVSN", order_type),
+            ("ORD_QTY", &count.to_string()),
+            ("ORD_UNPR", &price.to_string()),
+            // ("CTAC_TLNO", ""),
+            // ("SLL_TYPE", "01"),
             ("ALGO_NO", ""),
         ];
 
         let hash_data = self.get_hashkey(&parameters)?;
 
+        let tr_id = if buy {
+            if self.account_info.is_real() {
+                "TTTC0802U"
+            } else {
+                "VTTC0802U"
+            }
+        } else {
+            if self.account_info.is_real() {
+                "TTTC0801U"
+            } else {
+                "VTTC0801U"
+            }
+        };
         let headers = [
             ("custtype", "P"),
-            ("tr_id", "VTTC0802U"),
+            ("tr_id", tr_id),
             ("hashkey", hash_data.1.trim_matches('"')),
         ];
 
         let req = self.make_request_hashkey(url, RequestType::POST, &headers, hash_data.0)?;
-
-        // let res: blocking::Response = {
-        //     client
-        //         .post("https://openapivts.koreainvestment.com:29443/uapi/domestic-stock/v1/trading/order-cash")
-        //         .headers(req.headers)
-        //         .json(&hashkey.0)
-        //         .send()?
-        // };
-
         self.send_request(req)
     }
 }
 
-/// Attempts to try reqwest crate
-/// send `GET` request to httpbin.org which is a simple HTTP Request & Response service.
-/// this test gets a json response including your external IP address
-fn _get_reqwest_practice() -> Result<String, Box<dyn std::error::Error>> {
-    let client = reqwest::blocking::Client::new();
-    let res: blocking::Response = client
-        .get("https:/www.httpbin.org/get")
-        .header(header::ACCEPT, "application/json")
-        .header(header::USER_AGENT, "hyper/0.5.2".to_owned())
-        .send()?;
-
-    if res.status() == reqwest::StatusCode::OK {
-        let v: serde_json::Value = serde_json::from_str(&res.text()?)?;
-        println!("Response Text: {}", v["origin"]);
-        return Ok(v["origin"].to_string());
-    }
-
-    Err("Not Reach Here".into())
-}
-
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::kis::load_account_config;
 
-    use super::*;
-
     fn setup_for_wrapper_api() -> KisApi {
-        let mut kis = KisApi::new(load_account_config("./secret").unwrap());
+        let mut kis = KisApi::new(load_account_config("./secret", false).unwrap());
         let res = kis.issue_access_token();
         assert_eq!(res.unwrap(), true);
         kis
@@ -387,7 +355,7 @@ mod tests {
 
     #[test]
     fn test_load_account_config_all_valid() {
-        let conf = load_account_config("./secret");
+        let conf = load_account_config("./secret", false);
         let empty_acc_info = AccountConfig::new();
         let conf = conf.unwrap_or(AccountConfig::new());
 
@@ -396,7 +364,7 @@ mod tests {
 
     #[test]
     fn test_get_hashkey() {
-        let kis = KisApi::new(load_account_config("./secret").unwrap());
+        let kis = setup_for_wrapper_api();
         let parameters = [
             ("CANO", "00000000"),
             ("ACNT_PRDT_CD", "01"),
@@ -416,7 +384,7 @@ mod tests {
 
     #[test]
     fn test_issue_request_token() {
-        let mut kis = KisApi::new(load_account_config("./secret").unwrap());
+        let mut kis = setup_for_wrapper_api();
         let res = kis.issue_access_token();
         assert!(res.is_ok())
     }
@@ -444,7 +412,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_balance() {
+    fn test_account_balance() {
         let kis = setup_for_wrapper_api();
 
         let res = kis.get_account_balance();
@@ -458,7 +426,7 @@ mod tests {
     fn test_order_buy() {
         let kis = setup_for_wrapper_api();
 
-        let res = kis.order_buy_stock();
+        let res = kis.order_buy_stock("01", 1, 0);
         assert!(res.is_ok());
 
         if let Ok(v) = res {
@@ -467,9 +435,14 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "just for checking wheter reqwest is working"]
-    fn practice_reqwest() {
-        let res = _get_reqwest_practice();
-        assert!(res.is_ok())
+    fn test_order_sell() {
+        let kis = setup_for_wrapper_api();
+
+        let res = kis.order_sell_stock("01", 1, 0);
+        assert!(res.is_ok());
+
+        if let Ok(v) = res {
+            println!("Response Text  : {}", v);
+        }
     }
 }

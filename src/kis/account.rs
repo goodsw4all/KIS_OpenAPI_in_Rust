@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct AccountConfig {
     id: String,
-    password: String,
+    // password: String,
+    real: bool,
     key: String,
     account: String,
     phone: String,
@@ -22,7 +23,8 @@ impl AccountConfig {
     pub fn new() -> Self {
         AccountConfig {
             id: "".to_string(),
-            password: "".to_string(),
+            // password: "".to_string(),
+            real: false,
             key: "".to_string(),
             account: "".to_string(),
             phone: "".to_string(),
@@ -31,6 +33,10 @@ impl AccountConfig {
             secret: "".to_string(),
             token: "".to_string(),
         }
+    }
+
+    pub fn is_real(&self) -> bool {
+        self.real
     }
 
     pub fn get_apikey(&self) -> &str {
@@ -63,8 +69,14 @@ impl AccountConfig {
     }
 }
 
-pub fn load_account_config(path: &str) -> MyResult<AccountConfig> {
-    let reader = io::BufReader::new(fs::File::open(format!("./{path}/kis_test.json"))?);
+pub fn load_account_config(path: &str, real: bool) -> MyResult<AccountConfig> {
+    let config_path = if real {
+        format!("./{path}/kis_real.json")
+    } else {
+        format!("./{path}/kis_test.json")
+    };
+
+    let reader = io::BufReader::new(fs::File::open(config_path)?);
     let conf: AccountConfig = serde_json::from_reader(reader)?;
 
     Ok(conf)
