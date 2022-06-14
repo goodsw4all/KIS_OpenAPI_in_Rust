@@ -16,13 +16,18 @@ KIS 트레이딩 오픈API Client in Rust (https://apiportal.koreainvestment.com
 
 ## Development 
 ### SDK (Working on only in virtual account for now)
+#### API
 - [x] 보안인증키 발급 (access token)
 - [x] Hashkey
 - [x] 현재가 시세
 - [x] 주식 현재가 일자별
-- [ ] 매수 주문
+- [x] 매수 주문
+- [x] 매도 주문
 - [ ] 정정 취소 주문
-- [ ] 매도 주문
+- [ ] TBD 
+#### Websockets
+- [ ] 주식호가
+- [ ] 체결통보
 - [ ] TBD 
 
 ### Automatic Trading
