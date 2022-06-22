@@ -17,14 +17,14 @@ KIS 트레이딩 오픈API Client in Rust (https://apiportal.koreainvestment.com
 ## Development 
 ### SDK (Working on only in virtual account for now)
 #### API
-##### Oauth 인증
+- [x] Oauth 인증
   - [x] 보안인증키 발급 (access token)
   - [x] Hashkey
-##### 국내주식주문
+- [ ] 국내주식주문
   - [x] 매수 주문
   - [x] 매도 주문
   - [ ] 정정 취소 주문
-##### 국내주식시세
+- [ ] 국내주식시세
   - [x] 주식현재가 시세[v1_국내주식-008]
   - [x] 주식현재가 체결[v1_국내주식-009]
   - [x] 주식현재가 일자별[v1_국내주식-010]
@@ -34,12 +34,12 @@ KIS 트레이딩 오픈API Client in Rust (https://apiportal.koreainvestment.com
   - [ ] ELW현재가 시세[v1_국내주식-014]
   - [ ] 국내주식기간별시세(일/주/월/년)[v1_국내주식-016]
   - [ ] 국내주식업종기간별시세(일/주/월/년)[v1_국내주식-021]
-#### Websockets
+- [ ] Websockets
   - [x] 주식호가 (활용방법에 따라 수정 필요)
   - [ ] 체결통보
-#### 해외주식주문 
+- [ ] 해외주식주문 
   - [ ] TBD
-#### 해외주식현재가
+- [ ] 해외주식현재가
   - [ ] TBD
 ### Code Generation
 #### API Tempalte 생성
