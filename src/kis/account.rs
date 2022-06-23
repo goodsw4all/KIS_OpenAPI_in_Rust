@@ -1,4 +1,4 @@
-type MyResult<T> = Result<T, Box<dyn std::error::Error>>;
+type AccountResult<T> = Result<T, Box<dyn std::error::Error>>;
 
 use std::fs;
 use std::io;
@@ -69,7 +69,7 @@ impl AccountConfig {
     }
 }
 
-pub fn load_account_config(path: &str, real: bool) -> MyResult<AccountConfig> {
+pub fn load_account_config(path: &str, real: bool) -> AccountResult<AccountConfig> {
     let config_path = if real {
         format!("./{path}/kis_real.json")
     } else {

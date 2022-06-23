@@ -1,103 +1,11 @@
 use reqwest::blocking;
-use reqwest::header::{self, HeaderMap, HeaderName, HeaderValue};
+use reqwest::header::{self, HeaderName, HeaderValue};
 use std::collections::HashMap;
 
-use super::account::AccountConfig;
+use super::AccountConfig;
+use super::{KisRequest, RequestType};
 
 type KisResult<T> = Result<T, Box<dyn std::error::Error>>;
-
-#[derive(Debug)]
-struct KisRequest {
-    req_type: RequestType,
-    url: String,
-    headers: HeaderMap,
-    parameters: HashMap<String, String>,
-}
-
-#[derive(Debug)]
-enum RequestType {
-    GET,
-    POST,
-    POSTTOKEN,
-}
-
-impl KisRequest {
-    fn new(req_type: RequestType, conf: &AccountConfig) -> Self {
-        let url = conf.get_url();
-
-        match req_type {
-            RequestType::GET => {
-                let mut headers = HeaderMap::new();
-                headers.insert(
-                    header::CONTENT_TYPE,
-                    HeaderValue::from_static("application/json"),
-                );
-                headers.insert(
-                    HeaderName::from_static("appkey"),
-                    HeaderValue::from_str(conf.get_apikey()).unwrap(),
-                );
-                headers.insert(
-                    HeaderName::from_static("appsecret"),
-                    HeaderValue::from_str(conf.get_secret()).unwrap(),
-                );
-
-                let parameters: HashMap<String, String> = HashMap::new();
-
-                Self {
-                    req_type,
-                    headers,
-                    parameters,
-                    url,
-                }
-            }
-
-            RequestType::POST => {
-                let mut headers = HeaderMap::new();
-                headers.insert(
-                    header::CONTENT_TYPE,
-                    HeaderValue::from_static("application/json"),
-                );
-                headers.insert(
-                    HeaderName::from_static("appkey"),
-                    HeaderValue::from_str(conf.get_apikey()).unwrap(),
-                );
-                headers.insert(
-                    HeaderName::from_static("appsecret"),
-                    HeaderValue::from_str(conf.get_secret()).unwrap(),
-                );
-
-                let parameters: HashMap<String, String> = HashMap::from([]);
-
-                Self {
-                    req_type,
-                    headers,
-                    parameters,
-                    url,
-                }
-            }
-            RequestType::POSTTOKEN => {
-                let mut headers = HeaderMap::new();
-                headers.insert(
-                    header::CONTENT_TYPE,
-                    HeaderValue::from_static("application/json"),
-                );
-
-                let parameters: HashMap<String, String> = HashMap::from([
-                    ("appkey".to_string(), conf.get_apikey().to_string()),
-                    ("appsecret".to_string(), conf.get_secret().to_string()),
-                    ("grant_type".to_string(), "client_credentials".to_string()),
-                ]);
-
-                Self {
-                    req_type,
-                    headers,
-                    parameters,
-                    url,
-                }
-            }
-        }
-    }
-}
 
 pub struct KisApi {
     account_info: AccountConfig,
@@ -150,7 +58,6 @@ impl KisApi {
         req_type: RequestType,
         headers: &[(&str, &str)],
         parameters: &[(&str, &str)],
-        // hashmap : Option<HashMap<String, String>>
     ) -> KisResult<KisRequest> {
         let mut req = KisRequest::new(req_type, &self.account_info);
         let auth_header = format!("Bearer {}", self.account_info.get_access_token());
@@ -159,7 +66,7 @@ impl KisApi {
             HeaderValue::from_str(auth_header.as_str())?,
         );
 
-        // URL
+        // request URL
         req.url = req.url + url;
 
         // additional headers
@@ -226,6 +133,7 @@ impl KisApi {
         //TODO: Error handling
         match res.status() {
             reqwest::StatusCode::OK => {
+                // println!("Response Headers:\n{:#?}", res.headers());
                 let v: serde_json::Value = serde_json::from_str(&res.text()?)?;
                 Ok(v)
             }
@@ -235,33 +143,6 @@ impl KisApi {
             }
         }
     }
-
-    // 국내주식시세
-    pub fn get_stock_price_days(&self, ticker: &str) -> KisResult<serde_json::Value> {
-        let url = "/uapi/domestic-stock/v1/quotations/inquire-price";
-        let headers = [("tr_id", "FHKST01010400")];
-        let query = [
-            ("fid_cond_mrkt_div_code", "J"),
-            ("fid_input_iscd", ticker),
-            ("fid_org_adj_prc", "1"),
-            ("fid_period_div_code", "D"), // D,W,M
-        ];
-
-        let req = self.make_request(url, RequestType::GET, &headers, &query)?;
-
-        self.send_request(req)
-    }
-
-    pub fn get_stock_price_realtime(&self, ticker: &str) -> KisResult<serde_json::Value> {
-        let url = "/uapi/domestic-stock/v1/quotations/inquire-price";
-        let headers = [("tr_id", "FHKST01010100")];
-        let query = [("fid_cond_mrkt_div_code", "J"), ("fid_input_iscd", ticker)];
-
-        let req = self.make_request(url, RequestType::GET, &headers, &query)?;
-
-        self.send_request(req)
-    }
-    // 국내주식시세
 
     pub fn get_account_balance(&self) -> KisResult<serde_json::Value> {
         let url = "/uapi/domestic-stock/v1/trading/inquire-balance";
@@ -292,21 +173,40 @@ impl KisApi {
         self.send_request(req)
     }
 
-    pub fn order_buy_stock(&self, order_type: &str, count: u32, price: u32) -> KisResult<serde_json::Value> {
-        self.order_stock(order_type, count, price, true)
+    pub fn order_buy_stock(
+        &self,
+        ticker: &str,
+        order_type: &str,
+        count: u32,
+        price: u32,
+    ) -> KisResult<serde_json::Value> {
+        self.order_stock(ticker, order_type, count, price, true)
     }
 
-    pub fn order_sell_stock(&self, order_type: &str, count: u32, price: u32) -> KisResult<serde_json::Value> {
-        self.order_stock(order_type, count, price, false)
+    pub fn order_sell_stock(
+        &self,
+        ticker: &str,
+        order_type: &str,
+        count: u32,
+        price: u32,
+    ) -> KisResult<serde_json::Value> {
+        self.order_stock(ticker, order_type, count, price, false)
     }
 
-    pub fn order_stock(&self, order_type: &str, count: u32, price: u32, buy: bool) -> KisResult<serde_json::Value> {
+    pub fn order_stock(
+        &self,
+        ticker: &str,
+        order_type: &str,
+        count: u32,
+        price: u32,
+        buy: bool,
+    ) -> KisResult<serde_json::Value> {
         let url = "/uapi/domestic-stock/v1/trading/order-cash";
 
         let parameters = [
             ("CANO", "50067252"),
             ("ACNT_PRDT_CD", "01"),
-            ("PDNO", "005930"),
+            ("PDNO", ticker),
             ("ORD_DVSN", order_type),
             ("ORD_QTY", &count.to_string()),
             ("ORD_UNPR", &price.to_string()),
@@ -339,12 +239,95 @@ impl KisApi {
         let req = self.make_request_hashkey(url, RequestType::POST, &headers, hash_data.0)?;
         self.send_request(req)
     }
+
+    pub fn get_ordered_list(&self) -> KisResult<serde_json::Value> {
+        if !self.account_info.is_real() {
+            return Err("Not Available for virtual account".into());
+        }
+        let url = "/uapi/domestic-stock/v1/trading/inquire-psbl-rvsecncl";
+
+        let tr_id = "TTTC8036R";
+        let headers = [("tr_id", tr_id)];
+
+        let query = [
+            ("CANO", self.account_info.get_account_no()),
+            ("ACNT_PRDT_CD", "01"),
+            ("CTX_AREA_FK100", ""),
+            ("CTX_AREA_NK100", ""),
+            ("INQR_DVSN_1", "0"),
+            ("INQR_DVSN_2", "0"),
+        ];
+
+        let req = self.make_request(url, RequestType::GET, &headers, &query)?;
+
+        self.send_request(req)
+    }
+
+    // 국내주식시세
+    /// 주식현재가 시세[v1_국내주식-008]
+    pub fn get_stock_current_price(&self, ticker: &str) -> KisResult<serde_json::Value> {
+        let url = "/uapi/domestic-stock/v1/quotations/inquire-price";
+        let headers = [("tr_id", "FHKST01010100")];
+        let query = [("fid_cond_mrkt_div_code", "J"), ("fid_input_iscd", ticker)];
+
+        let req = self.make_request(url, RequestType::GET, &headers, &query)?;
+
+        self.send_request(req)
+    }
+
+    /// 주식현재가 체결[v1_국내주식-009]
+    pub fn get_stock_current_concluded(&self, ticker: &str) -> KisResult<serde_json::Value> {
+        let url = "/uapi/domestic-stock/v1/quotations/inquire-ccnl";
+        let headers = [("tr_id", "FHKST01010300")];
+        let query = [("fid_cond_mrkt_div_code", "J"), ("fid_input_iscd", ticker)];
+        let req = self.make_request(url, RequestType::GET, &headers, &query)?;
+
+        self.send_request(req)
+    }
+
+    /// 주식현재가 일자별[v1_국내주식-010]
+    pub fn get_stock_daily_price(&self, ticker: &str) -> KisResult<serde_json::Value> {
+        let url = "/uapi/domestic-stock/v1/quotations/inquire-daily-price";
+        let headers = [("tr_id", "FHKST01010400")];
+        let query = [
+            ("fid_cond_mrkt_div_code", "J"),
+            ("fid_input_iscd", ticker),
+            ("fid_org_adj_prc", "1"),
+            ("fid_period_div_code", "D"), // D,W,M
+        ];
+
+        let req = self.make_request(url, RequestType::GET, &headers, &query)?;
+
+        self.send_request(req)
+    }
+
+    /// 주식현재가 투자자[v1_국내주식-012]
+    pub fn get_investor_list(&self, ticker: &str) -> KisResult<serde_json::Value> {
+        let url = "/uapi/domestic-stock/v1/quotations/inquire-investor";
+        let headers = [("tr_id", "FHKST01010900")];
+        let query = [("fid_cond_mrkt_div_code", "J"), ("fid_input_iscd", ticker)];
+        let req = self.make_request(url, RequestType::GET, &headers, &query)?;
+
+        self.send_request(req)
+    }
+    pub fn get_investor_list_(&self, ticker: &str) -> KisResult<serde_json::Value> {
+        let url = "/uapi/domestic-stock/v1/quotations/inquire-investor";
+
+        let headers = [("tr_id", "FHKST01010900")];
+        let query = [("fid_cond_mrkt_div_code", "J"), ("fid_input_iscd", ticker)];
+
+        let req = self.make_request(url, RequestType::GET, &headers, &query)?;
+
+        self.send_request(req)
+    }
 }
 
 #[cfg(test)]
-mod tests {
+mod unit_test {
     use super::*;
     use crate::kis::load_account_config;
+
+    static TICKER: &'static str = "003490";
 
     fn setup_for_wrapper_api() -> KisApi {
         let mut kis = KisApi::new(load_account_config("./secret", false).unwrap());
@@ -389,28 +372,42 @@ mod tests {
         assert!(res.is_ok())
     }
 
-    #[test]
-    fn test_get_price_realtime() {
+    /// 국내주식시세
+    fn run_price_req(f: fn(&KisApi, &str) -> KisResult<serde_json::Value>, ticker: &str) -> serde_json::Value {
         let kis = setup_for_wrapper_api();
 
-        let res = kis.get_stock_price_realtime("064350");
+        let res = f(&kis, ticker);
+
         assert!(res.is_ok());
-        if let Ok(v) = res {
-            println!("Response Text 주식 현재가 : {}", v["output"]["stck_prpr"]);
-        }
+
+        res.unwrap()
     }
 
     #[test]
-    fn test_get_price_days() {
-        let kis = setup_for_wrapper_api();
-
-        let res = kis.get_stock_price_days("069960");
-        assert!(res.is_ok());
-        if let Ok(v) = res {
-            println!("Response Text 주식 현재가 : {}", v);
-        }
+    fn test_get_stock_current_price() {
+        let v = run_price_req(KisApi::get_stock_current_price, TICKER);
+        println!("Response Text : {:#?}", v);
     }
 
+    #[test]
+    fn test_get_stock_current_concluded() {
+        let v = run_price_req(KisApi::get_stock_current_concluded, TICKER);
+        println!("Response Text : {:#?}", v);
+    }
+
+    #[test]
+    fn test_get_stock_daily_price() {
+        let v = run_price_req(KisApi::get_stock_daily_price, TICKER);
+        println!("Response Text : {:#?}", v);
+    }
+
+    #[test]
+    fn test_get_stock_inverstor_info() {
+        let v = run_price_req(KisApi::get_investor_list, TICKER);
+        println!("Response Text : {:#?}", v);
+    }
+
+    // Stock Order
     #[test]
     fn test_account_balance() {
         let kis = setup_for_wrapper_api();
@@ -418,7 +415,7 @@ mod tests {
         let res = kis.get_account_balance();
         assert!(res.is_ok());
         if let Ok(v) = res {
-            println!("Response Text  : {}", v);
+            println!("Response Text  : {:#?}", v);
         }
     }
 
@@ -426,7 +423,7 @@ mod tests {
     fn test_order_buy() {
         let kis = setup_for_wrapper_api();
 
-        let res = kis.order_buy_stock("01", 1, 0);
+        let res = kis.order_buy_stock(TICKER, "01", 1, 0);
         assert!(res.is_ok());
 
         if let Ok(v) = res {
@@ -438,7 +435,7 @@ mod tests {
     fn test_order_sell() {
         let kis = setup_for_wrapper_api();
 
-        let res = kis.order_sell_stock("01", 1, 0);
+        let res = kis.order_sell_stock(TICKER, "01", 1, 0);
         assert!(res.is_ok());
 
         if let Ok(v) = res {
