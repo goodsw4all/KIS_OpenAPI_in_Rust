@@ -43,6 +43,7 @@ KIS 트레이딩 오픈API Client in Rust (https://apiportal.koreainvestment.com
   - [ ] TBD
 #### Strategy
 - [ ] Simple Box Buy-Sell
+- [ ] Breakout Buy
 ### Code Generation
 #### API Tempalte 생성
   - [x] Excel API 문서를 읽고 API Template 자동 생성 [code_gen.py](./code_gen.py)
