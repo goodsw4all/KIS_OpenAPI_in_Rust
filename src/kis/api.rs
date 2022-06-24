@@ -301,8 +301,18 @@ impl KisApi {
         self.send_request(req)
     }
 
+    /// 주식현재가 호가 예상체결[v1_국내주식-011]
+    pub fn get_stock_bid_ask_prices(&self, ticker: &str) -> KisResult<serde_json::Value> {
+        let url = "/uapi/domestic-stock/v1/quotations/inquire-asking-price-exp-ccn";
+        let headers = [("tr_id", "FHKST01010200")];
+        let query = [("fid_cond_mrkt_div_code", "J"), ("fid_input_iscd", ticker)];
+        let req = self.make_request(url, RequestType::GET, &headers, &query)?;
+
+        self.send_request(req)
+    }
+
     /// 주식현재가 투자자[v1_국내주식-012]
-    pub fn get_investor_list(&self, ticker: &str) -> KisResult<serde_json::Value> {
+    pub fn get_stock_investor_list(&self, ticker: &str) -> KisResult<serde_json::Value> {
         let url = "/uapi/domestic-stock/v1/quotations/inquire-investor";
         let headers = [("tr_id", "FHKST01010900")];
         let query = [("fid_cond_mrkt_div_code", "J"), ("fid_input_iscd", ticker)];
@@ -310,12 +320,67 @@ impl KisApi {
 
         self.send_request(req)
     }
-    pub fn get_investor_list_(&self, ticker: &str) -> KisResult<serde_json::Value> {
-        let url = "/uapi/domestic-stock/v1/quotations/inquire-investor";
 
-        let headers = [("tr_id", "FHKST01010900")];
+    /// 주식현재가 회원사[v1_국내주식-013]
+    pub fn get_stock_membership_list(&self, ticker: &str) -> KisResult<serde_json::Value> {
+        let url = "/uapi/domestic-stock/v1/quotations/inquire-member";
+        let headers = [("tr_id", "FHKST01010600")];
         let query = [("fid_cond_mrkt_div_code", "J"), ("fid_input_iscd", ticker)];
+        let req = self.make_request(url, RequestType::GET, &headers, &query)?;
 
+        self.send_request(req)
+    }
+
+    /// ELW현재가 시세[v1_국내주식-014] not tested
+    pub fn get_stock_elw_price(&self, ticker: &str) -> KisResult<serde_json::Value> {
+        let url = "/uapi/domestic-stock/v1/quotations/inquire-elw-price";
+        let headers = [("tr_id", "FHKEW15010000")];
+        let query = [("fid_cond_mrkt_div_code", "W"), ("fid_input_iscd", ticker)];
+        let req = self.make_request(url, RequestType::GET, &headers, &query)?;
+
+        self.send_request(req)
+    }
+
+    /// 국내주식기간별시세(일/주/월/년)[v1_국내주식-016] R not tested
+    pub fn get_stock_duration_prices(
+        &self,
+        ticker: &str,
+        begin: &str,
+        end: &str,
+        duration: &str,
+    ) -> KisResult<serde_json::Value> {
+        let url = "/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice";
+        let headers = [("tr_id", "[실전투자]")];
+        let query = [
+            ("fid_cond_mrkt_div_code", "J"),
+            ("fid_input_iscd", ticker),
+            ("fid_input_date_1", begin),
+            ("fid_input_date_2", end),
+            ("fid_period_div_code", duration),
+            ("FID_ORG_ADJ_PRC", "0"), // 0:수정주가 1:원주가
+        ];
+        let req = self.make_request(url, RequestType::GET, &headers, &query)?;
+
+        self.send_request(req)
+    }
+
+    /// 국내주식업종기간별시세(일/주/월/년)[v1_국내주식-021] R not tested
+    pub fn get_sector_duration_prices(
+        &self,
+        section: &str,
+        begin: &str,
+        end: &str,
+        duration: &str,
+    ) -> KisResult<serde_json::Value> {
+        let url = "/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice";
+        let headers = [("tr_id", "[실전투자]")];
+        let query = [
+            ("fid_cond_mrkt_div_code", "U"),
+            ("fid_input_iscd", section),
+            ("fid_input_date_1", begin),
+            ("fid_input_date_2", end),
+            ("fid_period_div_code", duration),
+        ];
         let req = self.make_request(url, RequestType::GET, &headers, &query)?;
 
         self.send_request(req)
@@ -402,8 +467,20 @@ mod unit_test {
     }
 
     #[test]
+    fn test_get_stock_bid_ask_prices() {
+        let v = run_price_req(KisApi::get_stock_bid_ask_prices, TICKER);
+        println!("Response Text : {:#?}", v);
+    }
+
+    #[test]
     fn test_get_stock_inverstor_info() {
-        let v = run_price_req(KisApi::get_investor_list, TICKER);
+        let v = run_price_req(KisApi::get_stock_investor_list, TICKER);
+        println!("Response Text : {:#?}", v);
+    }
+
+    #[test]
+    fn test_get_stock_membership_list() {
+        let v = run_price_req(KisApi::get_stock_membership_list, TICKER);
         println!("Response Text : {:#?}", v);
     }
 
