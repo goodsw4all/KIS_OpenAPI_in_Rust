@@ -3,7 +3,7 @@ from openpyxl.cell import Cell
 
 import json
 
-api_doc_file = "KIS Developers API명세서_220616.xlsx"
+api_doc_file = "./docs/KIS Developers API명세서_220616.xlsx"
 wb = openpyxl.load_workbook(api_doc_file)
 print(wb.sheetnames)
 
@@ -77,7 +77,7 @@ def get_api_basic_info(row_index):
     return api_params
 
 
-def generate_code(api_summary, header):
+def generate_code_local_price(api_summary, header):
     print("pub fn API_NAME_XXX(&self) -> KisResult<serde_json::Value> {")
     print(f"    let url = \"{api_summary['URL']}\";")
     print(f'    let headers = [("tr_id", "{header["tr_id"]}")];')
@@ -97,7 +97,7 @@ if __name__ == '__main__':
     #     # print('"' + item[0] + '"' + ",")
     #     print("- [ ] "+item[0])
     # exit()
-    apis_name_list = [
+    apis_name_list_local_price = [
         "주식현재가 시세[v1_국내주식-008]",
         "주식현재가 체결[v1_국내주식-009]",
         "주식현재가 일자별[v1_국내주식-010]",
@@ -108,7 +108,7 @@ if __name__ == '__main__':
         "국내주식기간별시세(일/주/월/년)[v1_국내주식-016]",
         "국내주식업종기간별시세(일/주/월/년)[v1_국내주식-021]",
     ]
-    for api_name in apis_name_list:
+    for api_name in apis_name_list_local_price:
         begin_row_num, header = extract_api_parameters(api_name)
         summary = get_api_basic_info(begin_row_num)
-        generate_code(summary, header)
+        generate_code_local_price(summary, header)
