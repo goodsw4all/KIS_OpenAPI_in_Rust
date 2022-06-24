@@ -28,12 +28,12 @@ KIS 트레이딩 오픈API Client in Rust (https://apiportal.koreainvestment.com
   - [x] 주식현재가 시세[v1_국내주식-008]
   - [x] 주식현재가 체결[v1_국내주식-009]
   - [x] 주식현재가 일자별[v1_국내주식-010]
-  - [ ] 주식현재가 호가 예상체결[v1_국내주식-011]
+  - [x] 주식현재가 호가 예상체결[v1_국내주식-011]
   - [x] 주식현재가 투자자[v1_국내주식-012]
-  - [ ] 주식현재가 회원사[v1_국내주식-013]
-  - [ ] ELW현재가 시세[v1_국내주식-014]
-  - [ ] 국내주식기간별시세(일/주/월/년)[v1_국내주식-016]
-  - [ ] 국내주식업종기간별시세(일/주/월/년)[v1_국내주식-021]
+  - [x] 주식현재가 회원사[v1_국내주식-013]
+  - [x] ELW현재가 시세[v1_국내주식-014] (not tested yet)
+  - [x] 국내주식기간별시세(일/주/월/년)[v1_국내주식-016] (not tested yet)
+  - [x] 국내주식업종기간별시세(일/주/월/년)[v1_국내주식-021] (not tested yet)
 - [ ] Websockets
   - [x] 주식호가 (활용방법에 따라 수정 필요)
   - [ ] 체결통보
@@ -41,9 +41,11 @@ KIS 트레이딩 오픈API Client in Rust (https://apiportal.koreainvestment.com
   - [ ] TBD
 - [ ] 해외주식현재가
   - [ ] TBD
+#### Strategy
+- [ ] Simple Box Buy-Sell
 ### Code Generation
 #### API Tempalte 생성
-  - [x] Excel API 문서를 읽고 API Template 자동 생성 [code_gen.py](./docs/code_gen.py)
+  - [x] Excel API 문서를 읽고 API Template 자동 생성 [code_gen.py](./code_gen.py)
 
 ### Automatic Trading
 - [ ] TBD
