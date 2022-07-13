@@ -23,8 +23,8 @@ pub fn get_args() -> MyResult<kis::AccountConfig> {
         .arg(
             Arg::new("kis_server")
                 .value_name("Enable 실전 투자")
-                .short('t')
-                .long("type")
+                .short('r')
+                .long("real")
                 .help("account configuration folder for KIS connection")
                 .required(true)
                 .takes_value(false),
@@ -33,12 +33,13 @@ pub fn get_args() -> MyResult<kis::AccountConfig> {
 
     let conf_path = matches.value_of("account_config_path").unwrap();
 
-    kis::account::load_account_config(conf_path, false)
+    kis::load_account_config(conf_path, false)
     // Err("err".into())
 }
 
 pub fn run(config: kis::AccountConfig) -> MyResult<()> {
     println!("{config:#?}");
+    // TODO: Trade
     Ok(())
 }
 
