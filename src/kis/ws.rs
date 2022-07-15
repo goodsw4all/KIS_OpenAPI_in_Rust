@@ -5,11 +5,11 @@ use tungstenite::{connect, Message};
 use url::Url;
 
 use std::sync::mpsc::Sender;
-use std::{sync::mpsc, thread};
+// use std::{sync::mpsc, thread};
 
-type KisResult<T> = Result<T, Box<dyn std::error::Error>>;
+// type KisResult<T> = Result<T, Box<dyn std::error::Error>>;
 
-fn websoket_test(conf: &AccountConfig, ticker: &str, tx: Sender<String>) {
+pub fn websoket_test(conf: &AccountConfig, ticker: &str, tx: Sender<String>) {
     let params = json!({
       "header": {
         "appkey": conf.get_apikey(),
