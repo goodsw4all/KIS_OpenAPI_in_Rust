@@ -39,7 +39,8 @@ KIS 트레이딩 오픈API Client in Rust (https://apiportal.koreainvestment.com
   - [ ] 체결통보
 - [ ] 해외주식주문 
   - [ ] TBD
-- [ ] 해외주식현재가
+- [ ] 해외
+- [ ] 주식현재가
   - [ ] TBD
 #### Strategy
 - [ ] Simple Box Buy-Sell

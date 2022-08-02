@@ -25,7 +25,13 @@ impl KisApi {
         let ret = req.parameters.clone();
         let v = self.send_request(req);
         if let Ok(val) = v {
-            return Ok((ret, val["HASH"].to_string().trim_matches('"').to_string()));
+            return Ok((
+                ret,
+                val["HASH"]
+                    .to_string()
+                    .trim_matches('"')
+                    .to_string(),
+            ));
         }
 
         Err("".into())
@@ -44,8 +50,11 @@ impl KisApi {
         let v = self.send_request(req);
         match v {
             Ok(json_data) => {
-                self.account_info
-                    .set_access_token(json_data["access_token"].as_str().unwrap());
+                self.account_info.set_access_token(
+                    json_data["access_token"]
+                        .as_str()
+                        .unwrap(),
+                );
                 Ok(true)
             }
             Err(_) => Ok(false),
@@ -77,7 +86,8 @@ impl KisApi {
 
         // parameters : query or body
         for (k, v) in parameters {
-            req.parameters.insert(k.to_string(), v.to_string());
+            req.parameters
+                .insert(k.to_string(), v.to_string());
         }
 
         Ok(req)
@@ -394,7 +404,7 @@ mod unit_test {
 
     static TICKER: &'static str = "003490";
 
-    fn setup_for_wrapper_api() -> KisApi {
+    fn setup() -> KisApi {
         let mut kis = KisApi::new(load_account_config("./secret", false).unwrap());
         let res = kis.issue_access_token();
         assert_eq!(res.unwrap(), true);
@@ -412,7 +422,7 @@ mod unit_test {
 
     #[test]
     fn test_get_hashkey() {
-        let kis = setup_for_wrapper_api();
+        let kis = setup();
         let parameters = [
             ("CANO", "00000000"),
             ("ACNT_PRDT_CD", "01"),
@@ -432,14 +442,14 @@ mod unit_test {
 
     #[test]
     fn test_issue_request_token() {
-        let mut kis = setup_for_wrapper_api();
+        let mut kis = setup();
         let res = kis.issue_access_token();
         assert!(res.is_ok())
     }
 
     /// 국내주식시세
     fn run_price_req(f: fn(&KisApi, &str) -> KisResult<serde_json::Value>, ticker: &str) -> serde_json::Value {
-        let kis = setup_for_wrapper_api();
+        let kis = setup();
 
         let res = f(&kis, ticker);
 
@@ -487,7 +497,7 @@ mod unit_test {
     // Stock Order
     #[test]
     fn test_account_balance() {
-        let kis = setup_for_wrapper_api();
+        let kis = setup();
 
         let res = kis.get_account_balance();
         assert!(res.is_ok());
@@ -498,7 +508,7 @@ mod unit_test {
 
     #[test]
     fn test_order_buy() {
-        let kis = setup_for_wrapper_api();
+        let kis = setup();
 
         let res = kis.order_buy_stock(TICKER, "01", 1, 0);
         assert!(res.is_ok());
@@ -510,7 +520,7 @@ mod unit_test {
 
     #[test]
     fn test_order_sell() {
-        let kis = setup_for_wrapper_api();
+        let kis = setup();
 
         let res = kis.order_sell_stock(TICKER, "01", 1, 0);
         assert!(res.is_ok());

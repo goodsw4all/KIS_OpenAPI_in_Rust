@@ -1,10 +1,17 @@
 [package]
 name = "stock_trader"
 description = "한국투자증권 KIS Developers 트레이딩 오픈API"
-authors = ["codeart <codeart@gmail.com>", "mw"]
+authors = ["MW Jang <codeart@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# [profile.dev]
+# opt-level = 1
+
+# [profile.dev.package."*"]
+# opt-level = 3
+
 
 [lib]
 path = "src/lib.rs"
@@ -22,4 +29,5 @@ reqwest = { version = "0.11", features = ["json", "blocking"] }
 tungstenite = "0.17.2"
 url = "2.2.2"
 csv = "1.1"
+crossterm = "0.24.0"
 # tokio = { version = "1", features = ["full"] }

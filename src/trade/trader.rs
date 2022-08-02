@@ -10,14 +10,20 @@ trait Strategy {
         let kis = KisApi::new(config);
     }
     //BufReader::new(File::open(filename)?
-    fn get_list_from_csv(&self, csv_name: &str, column_name: &str) -> TradeResult<Vec<String>> {
+    fn get_tickers_from_csv(&self, csv_name: &str, column_name: &str) -> TradeResult<Vec<String>> {
         let mut result = Vec::new();
         result.push(String::from("TEST"));
 
         let mut csv = csv::Reader::from_reader(File::open(csv_name)?);
 
-        let index = csv.headers()?.iter().position(|x| x == column_name);
-        let index = if let Some(n) = index { n } else { 0 };
+        let idx_of_ticker = csv
+            .headers()?
+            .iter()
+            .position(|x| x == column_name);
+        let index = if let Some(n) = idx_of_ticker { n } else { 0 };
+        for header in csv.headers() {
+            println!("{:?}", header);
+        }
         for record in csv.records() {
             let rec = record?;
             // println!("{}", &record[index]);
@@ -32,8 +38,9 @@ trait Strategy {
         riskmap
     }
 
-    fn get_list_stocks_to_buy(&self) -> TradeResult<Vec<String>>;
+    fn make_list_stocks_to_buy_from_csv(&mut self) -> TradeResult<()>;
     fn calculate_order_price(&self, stock: &str) -> OrderPrice;
+    fn trade(&self) -> TradeResult<()>;
     fn run();
 }
 
@@ -54,23 +61,41 @@ impl SimpleTrade {
             stock_order_list: Vec::default(),
         }
     }
-}
 
-impl Strategy for SimpleTrade {
-    fn get_list_stocks_to_buy(&self) -> TradeResult<Vec<String>> {
+    fn check_macro_signal(&self) {
         let client = reqwest::blocking::Client::new();
 
-        let url = "http://127.0.0.1:8080/macro/vix";
+        let url = "http://127.0.0.1:8080/macro/status";
         let res: blocking::Response = client
             .get(url)
             // .headers(req.headers)
             // .query(&req.parameters)
-            .send()?;
-        todo!()
+            .send()
+            .unwrap();
+    }
+}
+
+impl Strategy for SimpleTrade {
+    fn make_list_stocks_to_buy_from_csv(&mut self) -> TradeResult<()> {
+        let stock_list = self.get_tickers_from_csv("./data/all_latte_test.csv", "TICKER")?;
+        for stock in stock_list.iter() {
+            self.stock_order_list
+                .push(self.calculate_order_price(stock));
+        }
+
+        Ok(())
     }
 
     fn calculate_order_price(&self, stock: &str) -> OrderPrice {
-        todo!()
+        OrderPrice {
+            ticker: String::from(stock),
+            buy: 0,
+            sell: 0,
+        }
+    }
+
+    fn trade(&self) -> TradeResult<()> {
+        Ok(())
     }
 
     fn run() {
@@ -78,15 +103,14 @@ impl Strategy for SimpleTrade {
     }
 }
 
+#[cfg(test)]
 mod unit_test {
-    use crate::kis::api::*;
-    use crate::kis::load_account_config;
-
     use super::*;
 
-    // static TICKER: &'static str = "003490";
+    use crate::kis::load_account_config;
 
-    fn setup_for_wrapper_api() -> KisApi {
+    // static TICKER: &'static str = "003490";
+    fn setup() -> KisApi {
         let mut kis = KisApi::new(load_account_config("./secret", false).unwrap());
         let res = kis.issue_access_token();
         assert_eq!(res.unwrap(), true);
@@ -95,9 +119,14 @@ mod unit_test {
 
     #[test]
     fn test_get_list_from_csv() {
-        println!("{}", std::env::current_dir().unwrap().display());
+        println!(
+            "{}",
+            std::env::current_dir()
+                .unwrap()
+                .display()
+        );
         let strategy = SimpleTrade::new();
-        let result = strategy.get_list_from_csv("./data/all_latte_test.csv", "TICKER");
+        let result = strategy.get_tickers_from_csv("./data/all_latte_test.csv", "TICKER");
         if let Ok(list) = result {
             println!("{list:?}");
         } else {
